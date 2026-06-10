@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Smart Classroom Chat Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        .chat-container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .chat-header {
+            background: #007bff;
+            color: white;
+            padding: 15px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        .chat-messages {
+            height: 400px;
+            overflow-y: auto;
+            padding: 15px;
+            background: #fafafa;
+        }
+        .message {
+            margin-bottom: 15px;
+            display: flex;
+            flex-direction: column;
+        }
+        .message.sent {
+            align-items: flex-end;
+        }
+        .message.received {
+            align-items: flex-start;
+        }
+        .message-content {
+            max-width: 70%;
+            padding: 8px 12px;
+            border-radius: 8px;
+            position: relative;
+        }
+        .message.sent .message-content {
+            background: #007bff;
+            color: white;
+        }
+        .message.received .message-content {
+            background: #e9ecef;
+            color: #333;
+        }
+        .message-sender {
+            font-size: 12px;
+            margin-bottom: 4px;
+            font-weight: bold;
+        }
+        .message-time {
+            font-size: 10px;
+            margin-top: 4px;
+            opacity: 0.7;
+        }
+        .chat-input {
+            padding: 15px;
+            border-top: 1px solid #dee2e6;
+            display: flex;
+            gap: 10px;
+        }
+        .chat-input input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+        }
+        .chat-input button {
+            padding: 10px 20px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .chat-input button:hover {
+            background: #0056b3;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px;
+            border-radius: 5px;
+            text-align: center;
+        }
+        .status.online {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status.offline {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .user-panel {
+            padding: 15px;
+            background: white;
+            margin-bottom: 20px;
+            border-radius: 10px;
+        }
+        .debug {
+            margin-top: 20px;
+            padding: 10px;
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        button {
+            margin: 5px;
+            padding: 8px 15px;
+            cursor: pointer;
+        }
+        .btn-primary {
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="user-panel">
+        <h3>🔌 Connection Panel</h3>
+        <div>
+            <label>User ID: </label>
+            <input type="text" id="userId" value="student1" style="width: 150px;">
+            <button onclick="connect()" class="btn-primary">Connect</button>
+            <button onclick="disconnect()" class="btn-secondary">Disconnect</button>
+        </div>
+        <div style="margin-top: 10px;">
+            <label>Send to: </label>
+            <input type="text" id="recipient" value="teacher1" style="width: 150px;">
+        </div>
+        <div id="connectionStatus" class="status offline" style="margin-top: 10px;">
+            ⚫ Disconnected
+        </div>
+    </div>
+
+    <div class="chat-container">
+        <div class="chat-header">
+            💬 Chat Room
+        </div>
+        <div class="chat-messages" id="messages">
+            <div class="message received">
+                <div class="message-content">
+                    Connect to start chatting...
+                </div>
+            </div>
+        </div>
+        <div class="chat-input">
+            <input type="text" id="messageInput" placeholder="Type your message..." onkeypress="if(event.key==='Enter') sendMessage()">
+            <button onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+
+    <div class="debug">
+        <strong>🔍 Debug Log:</strong>
+        <div id="debugLog"></div>
+    </div>
+
+    <script>
+        let ws = null;
+        let currentUser = 'student1';
+        
+        function connect() {
+            currentUser = document.getElementById('userId').value;
+            const wsUrl = `ws://localhost:8000/ws/${currentUser}`;
+            
+            addDebug(`Connecting to ${wsUrl}...`);
+            
+            ws = new WebSocket(wsUrl);
+            
+            ws.onopen = function() {
+                const statusDiv = document.getElementById('connectionStatus');
+                statusDiv.className = 'status online';
+                statusDiv.innerHTML = `✅ Connected as ${currentUser}`;
+                addDebug(`✅ Connected successfully as ${currentUser}`);
+                addSystemMessage(`You joined as ${currentUser}`);
+            };
+            
+            ws.onmessage = function(event) {
+                addDebug(`📥 Received: ${event.data.substring(0, 200)}`);
+                const data = JSON.parse(event.data);
+                handleIncomingMessage(data);
+            };
+            
+            ws.onclose = function() {
+                const statusDiv = document.getElementById('connectionStatus');
+                statusDiv.className = 'status offline';
+                statusDiv.innerHTML = '❌ Disconnected';
+                addDebug('❌ Disconnected from server');
+                addSystemMessage('Disconnected from server');
+            };
+            
+            ws.onerror = function(error) {
+                addDebug(`❌ WebSocket error: ${error}`);
+                addSystemMessage('Connection error occurred');
+            };
+        }
+        
+        function disconnect() {
+            if (ws) {
+                addDebug('Manually disconnecting...');
+                ws.close();
+                ws = null;
+            }
+        }
+        
+        function sendMessage() {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                alert('Not connected! Please connect first.');
+                return;
+            }
+            
+            const recipient = document.getElementById('recipient').value;
+            const content = document.getElementById('messageInput').value;
+            
+            if (!recipient) {
+                alert('Please enter recipient ID');
+                return;
+            }
+            
+            if (!content.trim()) {
+                alert('Please enter a message');
+                return;
+            }
+            
+            const message = {
+                type: 'chat',
+                payload: {
+                    recipient_id: recipient,
+                    message_type: 'text',
+                    content: content
+                }
+            };
+            
+            addDebug(`📤 Sending to ${recipient}: ${content}`);
+            ws.send(JSON.stringify(message));
+            
+            // Display sent message immediately
+            addChatMessage('You', content, 'sent');
+            
+            document.getElementById('messageInput').value = '';
+        }
+        
+        function handleIncomingMessage(data) {
+            addDebug(`Processing message type: ${data.type}`);
+            
+            switch(data.type) {
+                case 'chat_message':
+                    // Display received message
+                    const sender = data.payload.sender_name || data.payload.sender_id;
+                    const content = data.payload.content;
+                    addChatMessage(sender, content, 'received');
+                    addDebug(`💬 Chat message from ${sender}: ${content}`);
+                    break;
+                    
+                case 'message_status':
+                    addDebug(`📋 Message status: ${data.payload.status}`);
+                    if (data.payload.status === 'delivered') {
+                        addSystemMessage(`Message delivered to ${data.payload.recipient_online ? 'online user' : 'offline user'}`);
+                    }
+                    break;
+                    
+                case 'typing_indicator':
+                    if (data.payload.is_typing) {
+                        addSystemMessage(`${data.payload.user_id} is typing...`);
+                    }
+                    break;
+                    
+                case 'user_status':
+                    addSystemMessage(`${data.payload.name} is now ${data.payload.status}`);
+                    addDebug(`User status: ${data.payload.user_id} -> ${data.payload.status}`);
+                    break;
+                    
+                case 'ai_stream_chunk':
+                    updateAIResponse(data.payload.partial_response);
+                    break;
+                    
+                case 'ai_complete':
+                    addChatMessage('AI Tutor', data.payload.full_response, 'received');
+                    break;
+                    
+                case 'error':
+                    addSystemMessage(`Error: ${data.payload.error}`);
+                    addDebug(`❌ Error: ${data.payload.error}`);
+                    break;
+                    
+                default:
+                    addDebug(`Unknown message type: ${data.type}`);
+                    addSystemMessage(`Received: ${data.type}`);
+            }
+        }
+        
+        function addChatMessage(sender, content, type) {
+            const messagesDiv = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            
+            const timestamp = new Date().toLocaleTimeString();
+            
+            if (type === 'sent') {
+                messageDiv.innerHTML = `
+                    <div class="message-content">
+                        <div>${content}</div>
+                        <div class="message-time">${timestamp}</div>
+                    </div>
+                `;
+            } else {
+                messageDiv.innerHTML = `
+                    <div class="message-content">
+                        <div class="message-sender">${sender}</div>
+                        <div>${content}</div>
+                        <div class="message-time">${timestamp}</div>
+                    </div>
+                `;
+            }
+            
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            
+            // Remove placeholder if it's the first real message
+            if (messagesDiv.children.length === 1 && messagesDiv.children[0].innerText.includes('Connect to start')) {
+                messagesDiv.innerHTML = '';
+                messagesDiv.appendChild(messageDiv);
+            }
+        }
+        
+        function addSystemMessage(content) {
+            const messagesDiv = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message received';
+            const timestamp = new Date().toLocaleTimeString();
+            messageDiv.innerHTML = `
+                <div class="message-content" style="background: #e9ecef; color: #6c757d; font-style: italic;">
+                    <div>🔔 ${content}</div>
+                    <div class="message-time">${timestamp}</div>
+                </div>
+            `;
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+        
+        function updateAIResponse(response) {
+            // Find or create AI response message
+            const messagesDiv = document.getElementById('messages');
+            let lastMessage = messagesDiv.lastChild;
+            
+            if (lastMessage && lastMessage.innerText.includes('AI Tutor')) {
+                // Update existing message
+                const contentDiv = lastMessage.querySelector('.message-content');
+                if (contentDiv) {
+                    contentDiv.innerHTML = `
+                        <div class="message-sender">AI Tutor</div>
+                        <div>${response} <span style="animation: blink 1s infinite;">▊</span></div>
+                        <div class="message-time">${new Date().toLocaleTimeString()}</div>
+                    `;
+                }
+            } else {
+                // Create new message
+                addChatMessage('AI Tutor', response + ' ▊', 'received');
+            }
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+        
+        function addDebug(text) {
+            const debugDiv = document.getElementById('debugLog');
+            const timestamp = new Date().toLocaleTimeString();
+            debugDiv.innerHTML += `<div>[${timestamp}] ${text}</div>`;
+            debugDiv.scrollTop = debugDiv.scrollHeight;
+            
+            // Keep only last 50 messages
+            while (debugDiv.children.length > 50) {
+                debugDiv.removeChild(debugDiv.children[0]);
+            }
+        }
+        
+        // Auto-connect on page load
+        window.onload = function() {
+            addDebug('Page loaded. Click Connect to start.');
+        };
+    </script>
+</body>
+</html>

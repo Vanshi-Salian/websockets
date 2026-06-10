@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Classroom Chat - Working Version</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .app {
+            display: flex;
+            height: 100vh;
+            padding: 20px;
+            gap: 20px;
+        }
+
+        .sidebar {
+            width: 320px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .sidebar-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .sidebar-header h2 {
+            font-size: 20px;
+            margin-bottom: 5px;
+        }
+
+        .sidebar-header p {
+            font-size: 12px;
+            opacity: 0.9;
+        }
+
+        .user-section {
+            padding: 20px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .user-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .user-btn {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            background: #f0f0f0;
+            transition: all 0.3s;
+        }
+
+        .user-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .status-box {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        .online-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+
+        .online-dot.green {
+            background: #4caf50;
+            animation: pulse 2s infinite;
+        }
+
+        .online-dot.red {
+            background: #f44336;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.2); }
+        }
+
+        button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn-connect {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-disconnect {
+            background: #f44336;
+            color: white;
+        }
+
+        .conversations-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+        }
+
+        .conversation {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            margin-bottom: 10px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .conversation:hover {
+            background: #e9ecef;
+            transform: translateX(5px);
+        }
+
+        .conversation.active {
+            background: linear-gradient(135deg, #667eea20 0%, #764ba220 100%);
+            border-left: 3px solid #667eea;
+        }
+
+        .conversation-avatar {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+
+        .conversation-info {
+            flex: 1;
+        }
+
+        .conversation-name {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .conversation-preview {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .unread-badge {
+            background: #f44336;
+            color: white;
+            border-radius: 50%;
+            min-width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: bold;
+            padding: 0 5px;
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .chat-area {
+            flex: 1;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .chat-header {
+            padding: 20px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .chat-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+        }
+
+        .chat-header-info h3 {
+            margin-bottom: 5px;
+        }
+
+        .chat-header-info p {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: #fafafa;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            display: flex;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.sent {
+            justify-content: flex-end;
+        }
+
+        .message.received {
+            justify-content: flex-start;
+        }
+
+        .message-bubble {
+            max-width: 70%;
+            padding: 10px 15px;
+            border-radius: 18px;
+            position: relative;
+        }
+
+        .message.sent .message-bubble {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .message.received .message-bubble {
+            background: white;
+            color: #333;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .message-sender {
+            font-size: 11px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .message-text {
+            word-wrap: break-word;
+        }
+
+        .message-time {
+            font-size: 10px;
+            margin-top: 4px;
+            opacity: 0.7;
+        }
+
+        .input-area {
+            padding: 20px;
+            border-top: 1px solid #eee;
+            background: white;
+        }
+
+        .input-wrapper {
+            display: flex;
+            gap: 10px;
+        }
+
+        .message-input {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #eee;
+            border-radius: 25px;
+            resize: none;
+            font-family: inherit;
+            font-size: 14px;
+        }
+
+        .message-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .send-btn {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 20px;
+            transition: transform 0.2s;
+        }
+
+        .send-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .ai-badge {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            margin-left: 8px;
+        }
+
+        .notification {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #333;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 10px;
+            animation: slideInRight 0.3s ease;
+            z-index: 1000;
+        }
+
+        @keyframes slideInRight {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h2>📚 Smart Classroom</h2>
+                <p>AI-Powered Learning Platform</p>
+            </div>
+            
+            <div class="user-section">
+                <div class="user-buttons">
+                    <button class="user-btn active" onclick="switchUser('student1')">👨‍🎓 Student</button>
+                    <button class="user-btn" onclick="switchUser('teacher1')">👩‍🏫 Teacher</button>
+                </div>
+                
+                <div class="status-box">
+                    <div>
+                        <span class="online-dot red" id="statusDot"></span>
+                        <span id="statusText">Disconnected</span>
+                    </div>
+                    <div>
+                        <button class="btn-connect" onclick="connect()">Connect</button>
+                        <button class="btn-disconnect" onclick="disconnect()">Disconnect</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="conversations-list">
+                <h4 style="margin-bottom: 15px;">💬 Conversations</h4>
+                <div id="conversationsContainer"></div>
+            </div>
+        </div>
+        
+        <div class="chat-area">
+            <div class="chat-header">
+                <div class="chat-avatar" id="chatAvatar">💬</div>
+                <div class="chat-header-info">
+                    <h3 id="chatTitle">Select a conversation</h3>
+                    <p id="chatStatus"></p>
+                </div>
+            </div>
+            
+            <div class="messages" id="messages">
+                <div class="message received">
+                    <div class="message-bubble">
+                        <div class="message-text">👋 Welcome! Select a conversation to start chatting.</div>
+                        <div class="message-time">Just now</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="input-area">
+                <div class="input-wrapper">
+                    <textarea class="message-input" id="messageInput" rows="1" placeholder="Type your message..." onkeypress="handleEnter(event)"></textarea>
+                    <button class="send-btn" onclick="sendMessage()">📤</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+        let currentUser = 'student1';
+        let currentChatId = null;
+        let currentChatName = null;
+        let currentChatType = null;
+        let streamingMessage = null;
+        
+        // Store all messages - key is the other user's ID
+        let allMessages = {};
+        let unreadCounts = {};
+        
+        const messagesDiv = document.getElementById('messages');
+        const messageInput = document.getElementById('messageInput');
+        
+        function updateConversationsList() {
+            const container = document.getElementById('conversationsContainer');
+            container.innerHTML = '';
+            
+            if (currentUser === 'student1') {
+                const unread = unreadCounts['teacher1'] || 0;
+                const teacherDiv = createConversationElement('teacher1', 'Jane Teacher', 'user', '👩‍🏫', unread);
+                container.appendChild(teacherDiv);
+            } else if (currentUser === 'teacher1') {
+                const unread = unreadCounts['student1'] || 0;
+                const studentDiv = createConversationElement('student1', 'John Student', 'user', '👨‍🎓', unread);
+                container.appendChild(studentDiv);
+            }
+            
+            const aiDiv = createConversationElement('ai', 'AI Tutor', 'ai', '🤖', 0);
+            container.appendChild(aiDiv);
+        }
+        
+        function createConversationElement(id, name, type, avatar, unread) {
+            const div = document.createElement('div');
+            div.className = 'conversation';
+            if (currentChatId === id) div.classList.add('active');
+            div.onclick = () => selectChat(id, name, type);
+            
+            // Get last message preview
+            const messages = allMessages[id] || [];
+            const lastMsg = messages.length > 0 ? messages[messages.length - 1] : null;
+            const preview = lastMsg ? (lastMsg.content.substring(0, 30) + (lastMsg.content.length > 30 ? '...' : '')) : 'Click to chat';
+            
+            div.innerHTML = `
+                <div class="conversation-avatar">${avatar}</div>
+                <div class="conversation-info">
+                    <div class="conversation-name">${name} ${type === 'ai' ? '<span class="ai-badge">AI</span>' : ''}</div>
+                    <div class="conversation-preview">${escapeHtml(preview)}</div>
+                </div>
+                ${unread > 0 ? `<div class="unread-badge">${unread}</div>` : ''}
+            `;
+            
+            return div;
+        }
+        
+        function switchUser(userId) {
+            currentUser = userId;
+            document.querySelectorAll('.user-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            currentChatId = null;
+            currentChatName = null;
+            currentChatType = null;
+            
+            updateConversationsList();
+            messagesDiv.innerHTML = '';
+            addSystemMessage(`Switched to ${userId === 'student1' ? 'Student' : 'Teacher'} mode`);
+            
+            document.getElementById('chatTitle').innerText = 'Select a conversation';
+            document.getElementById('chatStatus').innerText = '';
+            document.getElementById('chatAvatar').innerText = '💬';
+            
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                disconnect();
+                setTimeout(connect, 500);
+            }
+        }
+        
+        function connect() {
+            const wsUrl = `ws://localhost:8000/ws/${currentUser}`;
+            console.log('Connecting to:', wsUrl);
+            
+            ws = new WebSocket(wsUrl);
+            
+            ws.onopen = () => {
+                document.getElementById('statusDot').className = 'online-dot green';
+                document.getElementById('statusText').innerText = 'Connected';
+                addSystemMessage('✅ Connected to server');
+            };
+            
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                console.log('Received:', data);
+                handleMessage(data);
+            };
+            
+            ws.onclose = () => {
+                document.getElementById('statusDot').className = 'online-dot red';
+                document.getElementById('statusText').innerText = 'Disconnected';
+                addSystemMessage('❌ Disconnected');
+            };
+            
+            ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+                addSystemMessage('⚠️ Connection error');
+            };
+        }
+        
+        function disconnect() {
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+        }
+        
+        function selectChat(chatId, chatName, type) {
+            currentChatId = chatId;
+            currentChatName = chatName;
+            currentChatType = type;
+            
+            document.getElementById('chatTitle').innerText = chatName;
+            document.getElementById('chatAvatar').innerText = chatId === 'ai' ? '🤖' : (chatId === 'teacher1' ? '👩‍🏫' : '👨‍🎓');
+            document.getElementById('chatStatus').innerText = chatId === 'ai' ? 'AI Assistant Online' : 'Online';
+            
+            // Clear unread count for this chat
+            if (unreadCounts[chatId]) {
+                unreadCounts[chatId] = 0;
+                updateConversationsList();
+            }
+            
+            // Display messages for this conversation
+            displayMessages(chatId);
+            
+            // Highlight active conversation
+            document.querySelectorAll('.conversation').forEach(conv => conv.classList.remove('active'));
+            event.target.closest('.conversation').classList.add('active');
+        }
+        
+        function displayMessages(chatId) {
+            messagesDiv.innerHTML = '';
+            
+            if (chatId === 'ai') {
+                addMessage('AI Tutor', "Hello! I'm your AI Tutor. Ask me anything! 🎓", 'received');
+                return;
+            }
+            
+            const messages = allMessages[chatId] || [];
+            if (messages.length === 0) {
+                addSystemMessage(`Start chatting with ${currentChatName}`);
+            } else {
+                messages.forEach(msg => {
+                    const isSent = msg.sender_id === currentUser;
+                    const senderName = isSent ? 'You' : (msg.sender_name || msg.sender_id);
+                    addMessage(senderName, msg.content, isSent ? 'sent' : 'received', false, msg.timestamp);
+                });
+            }
+        }
+        
+        function sendMessage() {
+            const content = messageInput.value.trim();
+            if (!content) {
+                addSystemMessage('Please enter a message');
+                return;
+            }
+            
+            if (!currentChatId) {
+                addSystemMessage('⚠️ Please select a conversation first!');
+                return;
+            }
+            
+            if (currentChatType === 'ai') {
+                addMessage('You', content, 'sent');
+                sendToAI(content);
+            } else if (currentChatType === 'user') {
+                if (!ws || ws.readyState !== WebSocket.OPEN) {
+                    addSystemMessage('⚠️ Not connected! Please click Connect button');
+                    return;
+                }
+                
+                const message = {
+                    type: 'chat',
+                    payload: {
+                        recipient_id: currentChatId,
+                        message_type: 'text',
+                        content: content
+                    }
+                };
+                
+                console.log('Sending to:', currentChatId, content);
+                ws.send(JSON.stringify(message));
+                
+                // Add to local messages
+                const newMessage = {
+                    id: Date.now().toString(),
+                    sender_id: currentUser,
+                    sender_name: currentUser === 'student1' ? 'John Student' : 'Jane Teacher',
+                    content: content,
+                    timestamp: new Date().toISOString()
+                };
+                
+                if (!allMessages[currentChatId]) {
+                    allMessages[currentChatId] = [];
+                }
+                allMessages[currentChatId].push(newMessage);
+                addMessage('You', content, 'sent');
+                
+                // Update conversation list preview
+                updateConversationsList();
+            }
+            
+            messageInput.value = '';
+            messageInput.style.height = 'auto';
+        }
+        
+        function sendToAI(query) {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                addSystemMessage('⚠️ Not connected!');
+                return;
+            }
+            
+            const message = {
+                type: 'ai_query',
+                payload: {
+                    query: query,
+                    session_id: currentUser,
+                    context: { user_role: currentUser }
+                }
+            };
+            
+            ws.send(JSON.stringify(message));
+            addMessage('AI Tutor', 'Thinking...', 'received', true);
+        }
+        
+        function handleMessage(data) {
+            console.log('Handling message type:', data.type);
+            
+            switch(data.type) {
+                case 'chat_message':
+                    const senderId = data.payload.sender_id;
+                    const recipientId = data.payload.recipient_id;
+                    
+                    // Skip if it's my own message (echo)
+                    if (senderId === currentUser) return;
+                    
+                    console.log(`Message from ${senderId} to ${recipientId}`);
+                    
+                    // Store message
+                    if (!allMessages[senderId]) {
+                        allMessages[senderId] = [];
+                    }
+                    allMessages[senderId].push(data.payload);
+                    
+                    // Update conversation list
+                    updateConversationsList();
+                    
+                    // Show notification
+                    showNotification(`${data.payload.sender_name || senderId}: ${data.payload.content}`);
+                    
+                    // If this is the current active chat, display it immediately
+                    if (currentChatId === senderId) {
+                        addMessage(data.payload.sender_name || senderId, data.payload.content, 'received');
+                        // Clear unread count
+                        unreadCounts[senderId] = 0;
+                        updateConversationsList();
+                    } else {
+                        // Increment unread count
+                        unreadCounts[senderId] = (unreadCounts[senderId] || 0) + 1;
+                        updateConversationsList();
+                        addSystemMessage(`📬 New message from ${data.payload.sender_name || senderId}`);
+                    }
+                    break;
+                    
+                case 'ai_stream_chunk':
+                    updateAIStream(data.payload.partial_response);
+                    break;
+                    
+                case 'ai_complete':
+                    completeAIResponse(data.payload.full_response);
+                    // Store AI response
+                    if (currentChatId === 'ai') {
+                        if (!allMessages['ai']) allMessages['ai'] = [];
+                        allMessages['ai'].push({
+                            sender_id: 'ai',
+                            sender_name: 'AI Tutor',
+                            content: data.payload.full_response,
+                            timestamp: new Date().toISOString()
+                        });
+                    }
+                    break;
+                    
+                case 'message_status':
+                    console.log('Message status:', data.payload.status);
+                    break;
+                    
+                default:
+                    console.log('Unknown type:', data.type);
+            }
+        }
+        
+        function showNotification(message) {
+            const notification = document.createElement('div');
+            notification.className = 'notification';
+            notification.innerHTML = `📬 ${escapeHtml(message)}`;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+        
+        function addMessage(sender, text, type, isStreaming = false, timestamp = null) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            
+            if (isStreaming) messageDiv.id = 'streamingMsg';
+            
+            const time = timestamp ? new Date(timestamp).toLocaleTimeString() : new Date().toLocaleTimeString();
+            
+            messageDiv.innerHTML = `
+                <div class="message-bubble">
+                    ${type === 'received' ? `<div class="message-sender">${escapeHtml(sender)}</div>` : ''}
+                    <div class="message-text">${escapeHtml(text)}${isStreaming ? ' <span style="animation: pulse 1s infinite;">▊</span>' : ''}</div>
+                    <div class="message-time">${time}</div>
+                </div>
+            `;
+            
+            if (isStreaming) {
+                const oldStreaming = document.getElementById('streamingMsg');
+                if (oldStreaming) oldStreaming.remove();
+            }
+            
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            
+            if (isStreaming) streamingMessage = messageDiv;
+        }
+        
+        function updateAIStream(partialResponse) {
+            if (streamingMessage) {
+                const textDiv = streamingMessage.querySelector('.message-text');
+                textDiv.innerHTML = escapeHtml(partialResponse) + '<span style="animation: pulse 1s infinite;"> ▊</span>';
+                messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            }
+        }
+        
+        function completeAIResponse(fullResponse) {
+            if (streamingMessage) {
+                const textDiv = streamingMessage.querySelector('.message-text');
+                textDiv.innerHTML = escapeHtml(fullResponse);
+                streamingMessage.id = '';
+                streamingMessage = null;
+            }
+        }
+        
+        function addSystemMessage(text) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message received';
+            messageDiv.innerHTML = `
+                <div class="message-bubble" style="background: #f8f9fa; color: #666;">
+                    <div class="message-text">🔔 ${escapeHtml(text)}</div>
+                    <div class="message-time">${new Date().toLocaleTimeString()}</div>
+                </div>
+            `;
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+        
+        function handleEnter(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendMessage();
+            }
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        messageInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 100) + 'px';
+        });
+        
+        updateConversationsList();
+        setTimeout(connect, 1000);
+    </script>
+</body>
+</html>
